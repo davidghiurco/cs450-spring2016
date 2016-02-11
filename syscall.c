@@ -132,9 +132,13 @@ static int (*syscalls[])(void) = {
 void
 syscall(void)
 {
+  uint burst = sys_end_burst() - proc->sburst;
+  proc->burstarr[proc->burst_idx] = burst;
+  proc->burst_idx++;
+  if (proc->burst_idx > 100)
+    proc->burst_idx = 0;
   
   int num;
-
   num = proc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     proc->tf->eax = syscalls[num]();
@@ -143,4 +147,6 @@ syscall(void)
             proc->pid, proc->name, num);
     proc->tf->eax = -1;
   }
+
+  proc->sburst = sys_start_burst();
 }

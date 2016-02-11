@@ -6,7 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -100,6 +99,10 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+
+  // start the process burst
+  p->burst_idx = 0;
+  p->sburst = 0;
 }
 
 // Grow current process's memory by n bytes.
@@ -230,6 +233,13 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+	// clean up burst metadata
+	p->burst_idx = 0;
+	p->sburst = 0;
+	int i;
+	for (i=0; i<100; i++)
+	  p->burstarr[i] = 0x0;
+	// finished cleaning bursts
         release(&ptable.lock);
         return pid;
       }
