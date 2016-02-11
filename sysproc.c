@@ -88,3 +88,30 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_start_burst(void)
+{
+  uint start_ticks = sys_uptime();
+  return start_ticks;
+}
+
+int
+sys_end_burst(void)
+{
+  uint end_ticks = sys_uptime();
+  return end_ticks;
+}
+
+int
+sys_print_bursts(void)
+{
+  int i;
+  for (i=0; i < 100; i++) {
+    if (proc->burstarr[i] != 0x0)
+      cprintf("%d, ", proc->burstarr[i]);
+  }
+  cprintf("\n");
+return 0;
+}
+

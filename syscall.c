@@ -98,6 +98,9 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_start_burst();
+extern int sys_end_burst();
+extern int sys_print_bursts(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -121,11 +124,15 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_start_burst]  sys_start_burst,
+[SYS_end_burst]    sys_end_burst,
+[SYS_print_bursts]  sys_print_bursts,
 };
 
 void
 syscall(void)
 {
+  
   int num;
 
   num = proc->tf->eax;
