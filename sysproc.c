@@ -60,7 +60,7 @@ sys_sleep(void)
 {
   int n;
   uint ticks0;
-  
+
   if(argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
@@ -82,7 +82,7 @@ int
 sys_uptime(void)
 {
   uint xticks;
-  
+
   acquire(&tickslock);
   xticks = ticks;
   release(&tickslock);
@@ -93,6 +93,7 @@ int
 sys_start_burst(void)
 {
   uint start_ticks = sys_uptime();
+  proc->sburst = start_ticks;
   return start_ticks;
 }
 
@@ -114,4 +115,3 @@ sys_print_bursts(void)
   cprintf("\n");
 return 0;
 }
-

@@ -55,7 +55,7 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
-  
+
   if(argint(n, &i) < 0)
     return -1;
   if((uint)i >= proc->sz || (uint)i+size > proc->sz)
@@ -98,8 +98,8 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
-extern int sys_start_burst();
-extern int sys_end_burst();
+extern int sys_start_burst(void);
+extern int sys_end_burst(void);
 extern int sys_print_bursts(void);
 
 static int (*syscalls[])(void) = {
@@ -137,7 +137,7 @@ syscall(void)
   proc->burst_idx++;
   if (proc->burst_idx > 100)
     proc->burst_idx = 0;
-  
+
   int num;
   num = proc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
@@ -147,6 +147,5 @@ syscall(void)
             proc->pid, proc->name, num);
     proc->tf->eax = -1;
   }
-
-  proc->sburst = sys_start_burst();
+  sys_start_burst();
 }
