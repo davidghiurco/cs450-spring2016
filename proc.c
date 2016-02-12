@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "sysproc.h"
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -145,6 +146,10 @@ fork(void)
   np->parent = proc;
   *np->tf = *proc->tf;
 
+  // initialize burst metadata
+  np->sburst = sys_uptime();
+  np->burst_idx = 0;
+
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -156,8 +161,6 @@ fork(void)
   pid = np->pid;
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
-  np->sburst = 0;
-  np->burst_idx = 0;
   return pid;
 }
 

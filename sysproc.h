@@ -1,0 +1,11 @@
+int sys_fork(void);
+int sys_exit(void);
+int sys_wait(void);
+int sys_kill(void);
+int sys_getpid(void);
+int sys_sbrk(void);
+int sys_sleep(void);
+int sys_uptime(void);
+int sys_start_burst(void);
+int sys_end_burst(void);
+int sys_print_bursts(void);
