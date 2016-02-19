@@ -147,7 +147,8 @@ fork(void)
   *np->tf = *proc->tf;
 
   // initialize burst metadata
-  np->sburst = sys_uptime();
+  np->initial_burst = sys_uptime();
+  np->sburst = np->initial_burst;
   np->burst_idx = 0;
 
   // Clear %eax so that fork returns 0 in the child.

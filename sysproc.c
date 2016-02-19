@@ -107,11 +107,15 @@ sys_end_burst(void)
 int
 sys_print_bursts(void)
 {
+  // first end the turnaround timer
+  proc->turnaround = sys_uptime() - proc->initial_burst;
+
+  // print out process bursts
   int i;
   for (i=0; i < 100; i++) {
     if (proc->burstarr[i] != 0x0)
       cprintf("%d, ", proc->burstarr[i]);
   }
-  cprintf("\n");
+  cprintf("turnaround time: %d \n", proc->turnaround);
 return 0;
 }

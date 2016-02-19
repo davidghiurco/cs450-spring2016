@@ -10,7 +10,7 @@ struct cpu {
   volatile uint started;       // Has the CPU started?
   int ncli;                    // Depth of pushcli nesting.
   int intena;                  // Were interrupts enabled before pushcli?
-  
+
   // Cpu-local storage variables; see below
   struct cpu *cpu;
   struct proc *proc;           // The currently-running process.
@@ -66,10 +66,13 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  
+
   int burstarr[100];           // stores the burst metadata
   uint burst_idx;              // position to store next burst
   uint sburst;                 // the beginning of a process burst
+
+  uint initial_burst;
+  uint turnaround;
 };
 
 // Process memory is laid out contiguously, low addresses first:
