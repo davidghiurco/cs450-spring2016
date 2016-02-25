@@ -1,5 +1,6 @@
 // Segments in proc->gdt.
 #define NSEGS     7
+#define MAX_NUM_BURSTS 100
 
 // Per-CPU state
 struct cpu {
@@ -67,12 +68,12 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 
-  int burstarr[100];           // stores the burst metadata
+  int burstarr[MAX_NUM_BURSTS];// stores the burst metadata
   uint burst_idx;              // position to store next burst
-  uint sburst;                 // the beginning of a process burst
+  uint sburst;                 // the beginning of each process burst
 
-  uint initial_burst;
-  uint turnaround;
+  uint initial_burst;         // start of turnaround time
+  uint turnaround;            // end of turnaround time
 };
 
 // Process memory is laid out contiguously, low addresses first:

@@ -7,7 +7,9 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "sysproc.h"
-#define INT_MAX 32767
+#define SENTINEL_VALUE 32767 // maximum value of an integer
+#define MAX_NUM_BURSTS 100 // size of burst array
+#define SIZE_OF_BURST_AVG 3 // determines how many bursts are averaged in SJRF scheduler
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -75,6 +77,11 @@ found:
   p->initial_burst = sys_uptime();
   p->sburst = p->initial_burst;
   p->burst_idx = 0;
+  int i;
+  for (i=0; i < MAX_NUM_BURSTS; i++) {
+    p->burstarr[i] = 0x0;
+  }
+
   return p;
 }
 
@@ -268,78 +275,76 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 
-int
-less_three_bursts(struct proc *p) {
-  if(p->burst_idx < 3 && p->burstarr[3])
+// helper method for SJRF scheduler
+static int
+less_than_three_bursts(struct proc *p) {
+  if(p->burst_idx <=2 && p->burstarr[3])
     return 1;
   return 0;
 }
+
 void
 scheduler(void)
 {
   struct proc *p;
-
-  for(;;){
+  struct proc *min_p;
+  for(;;) {
     // Enable interrupts on this processor.
     sti();
-
-    int min_avg = INT_MAX;
-    // struct proc *min_p;
-    int min_proc_pid = INT_MAX;
-
+    int min_avg = SENTINEL_VALUE;
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-        // cprintf("in first for loop\n");
         if(p->state != RUNNABLE)
           continue;
 
-          if (less_three_bursts(p)) { // do RR scheduling
-            //cprintf("in RR\n");
+          if (less_than_three_bursts(p)) { // do RR scheduling
             proc = p;
             switchuvm(p);
             p->state = RUNNING;
             swtch(&cpu->scheduler, proc->context);
-            switchkvm();
+            switchkvm(); // preempts the running process
             proc = 0;
-          }
-          else {
-            //cprintf("in else statement\n");
-            int bIndex;
-            int size_of_average = 3;
-            int loop_counter = size_of_average;
+          } // end RR scheduling
+
+          else { // do SJRF scheduling
+            int burstIndex;
+            int loop_counter = SIZE_OF_BURST_AVG;
             int burst_sum = 0;
             int avg_burst_time;
 
-            for (bIndex = p->burst_idx; loop_counter >=0; loop_counter --, bIndex--){
-              if (bIndex < 0) {
-                bIndex = 99;
+            // calculate the average burst times for each proc
+            for (burstIndex = p->burst_idx; loop_counter >=0; loop_counter --, burstIndex--) {
+              if (burstIndex < 0) { // edge case for burst array
+                burstIndex = MAX_NUM_BURSTS - 1;
               }
-              burst_sum += p->burstarr[bIndex];
-            }
-            avg_burst_time = burst_sum / size_of_average;
+              burst_sum += p->burstarr[burstIndex];
+            } // end for
+            avg_burst_time = burst_sum / SIZE_OF_BURST_AVG;
+
+            // save a pointer to the process with the minimum average burst time
             if (avg_burst_time < min_avg) {
-              //cprintf("in finding new min_p\n");
               min_avg = avg_burst_time;
-              min_proc_pid = p->pid;
+              min_p = p;
             }
 
-            for (p = ptable.proc; p <&ptable.proc[NPROC]; p++) {
-              if (p->state != RUNNABLE)
-                continue;
-              if (p->pid == min_proc_pid) {
-                proc = p;
-                switchuvm(p);
-                p->state = RUNNING;
-                swtch(&cpu->scheduler, proc->context);
-                switchkvm();
-                proc = 0;
-              }
+            // schedule the shortest job and let it run to completion
+            if (min_p->state == RUNNABLE) {
+              proc = min_p;
+              switchuvm(min_p);
+              min_p->state = RUNNING;
+              swtch(&cpu->scheduler, proc->context);
+              /*
+               switchkvm(); this should not be called in SJRF.
+               Min_p should run until it finishes, it should not be preempted
+              */
+              proc = 0;
+              min_p = 0;
             }
-        }
-      }
+          } // end SJRF scheduling
+        } // end ptable 'for loop'
       release(&ptable.lock);
-    }// end ;; for loop
+    }// end ;; 'for loop'
 } // end scheduler
 
 // Enter scheduler.  Must hold only ptable.lock
