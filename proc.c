@@ -278,7 +278,7 @@ wait(void)
 // helper method for SJRF scheduler
 static int
 less_than_three_bursts(struct proc *p) {
-  if(p->burst_idx <=2 && p->burstarr[3])
+  if(p->burst_idx <=2 && p->burstarr[3] == 0x0)
     return 1;
   return 0;
 }
