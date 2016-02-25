@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "sysproc.h"
+#define INT_MAX 32767
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -70,6 +71,10 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  // initialize burst metadata
+  p->initial_burst = sys_uptime();
+  p->sburst = p->initial_burst;
+  p->burst_idx = 0;
   return p;
 }
 
@@ -146,10 +151,6 @@ fork(void)
   np->parent = proc;
   *np->tf = *proc->tf;
 
-  // initialize burst metadata
-  np->initial_burst = sys_uptime();
-  np->sburst = np->initial_burst;
-  np->burst_idx = 0;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -266,6 +267,13 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+int
+less_three_bursts(struct proc *p) {
+  if(p->burst_idx < 3 && p->burstarr[3])
+    return 1;
+  return 0;
+}
 void
 scheduler(void)
 {
@@ -275,29 +283,64 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
+    int min_avg = INT_MAX;
+    // struct proc *min_p;
+    int min_proc_pid = INT_MAX;
+
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        // cprintf("in first for loop\n");
+        if(p->state != RUNNABLE)
+          continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      swtch(&cpu->scheduler, proc->context);
-      switchkvm();
+          if (less_three_bursts(p)) { // do RR scheduling
+            //cprintf("in RR\n");
+            proc = p;
+            switchuvm(p);
+            p->state = RUNNING;
+            swtch(&cpu->scheduler, proc->context);
+            switchkvm();
+            proc = 0;
+          }
+          else {
+            //cprintf("in else statement\n");
+            int bIndex;
+            int size_of_average = 3;
+            int loop_counter = size_of_average;
+            int burst_sum = 0;
+            int avg_burst_time;
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      proc = 0;
-    }
-    release(&ptable.lock);
+            for (bIndex = p->burst_idx; loop_counter >=0; loop_counter --, bIndex--){
+              if (bIndex < 0) {
+                bIndex = 99;
+              }
+              burst_sum += p->burstarr[bIndex];
+            }
+            avg_burst_time = burst_sum / size_of_average;
+            if (avg_burst_time < min_avg) {
+              //cprintf("in finding new min_p\n");
+              min_avg = avg_burst_time;
+              min_proc_pid = p->pid;
+            }
 
-  }
-}
+            for (p = ptable.proc; p <&ptable.proc[NPROC]; p++) {
+              if (p->state != RUNNABLE)
+                continue;
+              if (p->pid == min_proc_pid) {
+                proc = p;
+                switchuvm(p);
+                p->state = RUNNING;
+                swtch(&cpu->scheduler, proc->context);
+                switchkvm();
+                proc = 0;
+              }
+            }
+        }
+      }
+      release(&ptable.lock);
+    }// end ;; for loop
+} // end scheduler
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state.
