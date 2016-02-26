@@ -132,16 +132,15 @@ static int (*syscalls[])(void) = {
 void
 syscall(void)
 {
-  sys_end_burst(); // a system call ends a cpu burst
-
   int num;
   num = proc->tf->eax;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    sys_end_burst(); // a VALID system call ends a cpu burst
     proc->tf->eax = syscalls[num]();
+    sys_start_burst(); // after the system call is done, process goes back to bursting
   } else {
     cprintf("%d %s: unknown sys call %d\n",
             proc->pid, proc->name, num);
     proc->tf->eax = -1;
   }
-  sys_start_burst(); // after the system call is done, process goes back to bursting
 }

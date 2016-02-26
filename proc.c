@@ -287,7 +287,7 @@ void
 scheduler(void)
 {
   struct proc *p;
-  struct proc *min_p;
+  struct proc *min_p = 0;
   for(;;) {
     // Enable interrupts on this processor.
     sti();
@@ -336,7 +336,6 @@ scheduler(void)
               swtch(&cpu->scheduler, proc->context);
               /*
                switchkvm(); this should not be called in SJRF.
-               Min_p should run until it finishes, it should not be preempted
               */
               proc = 0;
               min_p = 0;

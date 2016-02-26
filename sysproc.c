@@ -94,9 +94,9 @@ sys_start_burst(void)
 {
   uint start_ticks = sys_uptime();
   proc->sburst = start_ticks;
-  proc->burst_idx++;
+  proc->burst_idx++; // store current burst in next postition in burstarr
   if (proc->burst_idx > 100)
-    proc->burst_idx = 0;
+    proc->burst_idx = 0; // edge case
   return start_ticks;
 }
 
@@ -121,6 +121,6 @@ sys_print_bursts(void)
     if (proc->burstarr[i] != 0x0)
       cprintf("%d, ", proc->burstarr[i]);
   }
-  cprintf("turnaround time: %d \n", proc->turnaround);
+  cprintf("turnaround time: %d\n", proc->turnaround);
 return 0;
 }
