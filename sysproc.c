@@ -94,6 +94,9 @@ sys_start_burst(void)
 {
   uint start_ticks = sys_uptime();
   proc->sburst = start_ticks;
+  proc->burst_idx++;
+  if (proc->burst_idx > 100)
+    proc->burst_idx = 0;
   return start_ticks;
 }
 
@@ -101,6 +104,8 @@ int
 sys_end_burst(void)
 {
   uint end_ticks = sys_uptime();
+  uint burst = end_ticks - proc->sburst;
+  proc->burstarr[proc->burst_idx] = burst;
   return end_ticks;
 }
 
