@@ -77,10 +77,7 @@ found:
   p->initial_burst = sys_uptime();
   p->sburst = p->initial_burst;
   p->burst_idx = 0;
-  int i;
-  for (i=0; i < MAX_NUM_BURSTS; i++) {
-    p->burstarr[i] = 0x0;
-  }
+  memset(p->burstarr, 0x0, MAX_NUM_BURSTS * sizeof(int));
 
   return p;
 }
