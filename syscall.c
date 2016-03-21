@@ -101,32 +101,42 @@ extern int sys_uptime(void);
 extern int sys_start_burst(void);
 extern int sys_end_burst(void);
 extern int sys_print_bursts(void);
+extern int sys_thread_create(void);
+extern int sys_thread_join(void);
+extern int sys_mtx_create(void);
+extern int sys_mtx_lock(void);
+extern int sys_mtx_unlock(void);
 
 static int (*syscalls[])(void) = {
-[SYS_fork]    sys_fork,
-[SYS_exit]    sys_exit,
-[SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
-[SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
-[SYS_start_burst]  sys_start_burst,
-[SYS_end_burst]    sys_end_burst,
+[SYS_fork]          sys_fork,
+[SYS_exit]          sys_exit,
+[SYS_wait]          sys_wait,
+[SYS_pipe]          sys_pipe,
+[SYS_read]          sys_read,
+[SYS_kill]          sys_kill,
+[SYS_exec]          sys_exec,
+[SYS_fstat]         sys_fstat,
+[SYS_chdir]         sys_chdir,
+[SYS_dup]           sys_dup,
+[SYS_getpid]        sys_getpid,
+[SYS_sbrk]          sys_sbrk,
+[SYS_sleep]         sys_sleep,
+[SYS_uptime]        sys_uptime,
+[SYS_open]          sys_open,
+[SYS_write]         sys_write,
+[SYS_mknod]         sys_mknod,
+[SYS_unlink]        sys_unlink,
+[SYS_link]          sys_link,
+[SYS_mkdir]         sys_mkdir,
+[SYS_close]         sys_close,
+[SYS_start_burst]   sys_start_burst,
+[SYS_end_burst]     sys_end_burst,
 [SYS_print_bursts]  sys_print_bursts,
+[SYS_thread_create] sys_thread_create,
+[SYS_thead_join]    sys_thread_join,
+[SYS_mtx_create]    sys_mtx_create,
+[SYS_mtx_lock]      sys_mtx_lock,
+[SYS_mtx_unlock]    sys_mtx_unlock
 };
 
 void

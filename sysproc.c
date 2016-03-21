@@ -124,3 +124,31 @@ sys_print_bursts(void)
   cprintf("turnaround time: %d\n", proc->turnaround);
 return 0;
 }
+
+int
+sys_thread_create(void)
+{
+  int tmain; // the function being called by the thread
+  int stack;
+  int arg;
+
+  if (argint(0, &tmain) < 0)
+    return -1;
+  if (argint(1, &stack) < 0)
+    return -1;
+  if (argint(2, &arg)) < 0)
+    return -1;
+
+  return thread_create((void *)tmain, (void *)stack, (void *)arg);
+}
+
+int
+sys_thread_join(void)
+{
+  int stack;
+
+  if (argint(0, &stack) < 0)
+    return -1;
+
+  return thread_join((void **) stack);
+}

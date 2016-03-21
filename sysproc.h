@@ -9,3 +9,5 @@ int sys_uptime(void);
 int sys_start_burst(void);
 int sys_end_burst(void);
 int sys_print_bursts(void);
+int sys_thread_create(void);
+int sys_thread_join(void);
