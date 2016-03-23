@@ -52,6 +52,10 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct thread_spin_lock {
+  uint locked;
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -74,6 +78,8 @@ struct proc {
 
   uint initial_burst;         // start of turnaround time
   uint turnaround;            // end of turnaround time
+
+  char *thread_stack_top;
 };
 
 // Process memory is laid out contiguously, low addresses first:

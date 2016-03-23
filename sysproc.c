@@ -136,7 +136,7 @@ sys_thread_create(void)
     return -1;
   if (argint(1, &stack) < 0)
     return -1;
-  if (argint(2, &arg)) < 0)
+  if (argint(2, &arg) < 0)
     return -1;
 
   return thread_create((void *)tmain, (void *)stack, (void *)arg);
@@ -152,3 +152,50 @@ sys_thread_join(void)
 
   return thread_join((void **) stack);
 }
+
+int
+sys_mtx_create(void)
+{
+  return -1;
+}
+
+int
+sys_mtx_lock(void)
+{
+  return -1;
+}
+
+int
+sys_mtx_unlock(void)
+{
+  return -1;
+}
+
+/*
+int
+sys_mtx_create(void)
+{
+  int locked;
+  if(argint(0, &locked) < 0)
+    return -1;
+  return mtx_create(locked);
+}
+
+int
+sys_mtx_lock(void)
+{
+  int lock_id;
+  if(argint(0, &lock_id) <0)
+    return -1;
+  return mtx_lock(lock_id);
+}
+
+int
+sys_mtx_unlock(void)
+{
+  int lock_id;
+  if(argint(0, &lock_id) <0)
+    return -1;
+  return mtx_unlock(lock_id);
+}
+*/

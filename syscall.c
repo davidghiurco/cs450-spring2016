@@ -133,7 +133,7 @@ static int (*syscalls[])(void) = {
 [SYS_end_burst]     sys_end_burst,
 [SYS_print_bursts]  sys_print_bursts,
 [SYS_thread_create] sys_thread_create,
-[SYS_thead_join]    sys_thread_join,
+[SYS_thread_join]    sys_thread_join,
 [SYS_mtx_create]    sys_mtx_create,
 [SYS_mtx_lock]      sys_mtx_lock,
 [SYS_mtx_unlock]    sys_mtx_unlock

@@ -11,3 +11,6 @@ int sys_end_burst(void);
 int sys_print_bursts(void);
 int sys_thread_create(void);
 int sys_thread_join(void);
+int sys_mtx_create(void);
+int sys_mtx_lock(void);
+int sys_mtx_unlock(void);

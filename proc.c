@@ -10,10 +10,18 @@
 #define SENTINEL_VALUE 32767 // maximum value of an integer
 #define MAX_NUM_BURSTS 100 // size of burst array
 #define SIZE_OF_BURST_AVG 3 // determines how many bursts are averaged in SJRF scheduler
+#define MAX_NUM_LOCKS 100
+
+typedef int pid_t;
+typedef pid_t tid_t;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
+
+struct thread_spin_lock thread_locks[MAX_NUM_LOCKS];
+int next_lock_idx = 1;
 
 static struct proc *initproc;
 
@@ -134,7 +142,7 @@ growproc(int n)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
-int
+pid_t
 fork(void)
 {
   int i, pid;
@@ -240,13 +248,11 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-	// clean up burst metadata
-	p->burst_idx = 0;
-	p->sburst = 0;
-	int i;
-	for (i=0; i<100; i++)
-	  p->burstarr[i] = 0x0;
-	// finished cleaning bursts
+	      // clean up burst metadata
+	      p->burst_idx = 0;
+	      p->sburst = 0;
+        memset(p->burstarr, 0x0, MAX_NUM_BURSTS * sizeof(int));
+	      // finished cleaning bursts
         release(&ptable.lock);
         return pid;
       }
@@ -510,4 +516,72 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// Threading API for MP2 IIT CS 450 follows
+//****************************THREADING***************************
+
+/*
+  create the stack frame for the thread execution and return
+  pointer to the top of the newly created stack
+  MUST PASS IN SPACE ALLOCATED BY MALLOC as the "*stack" parameter
+*/
+
+int
+thread_stack_init(void *stack, void *args)
+{
+  return 2;
+}
+
+/* Copy len bytes from p to user address va in page table pgdir.
+int
+copyout(pde_t *pgdir, uint va, void *p, uint len)
+*/
+
+
+tid_t
+thread_create(void (*tmain)(void *), void *stack, void *arg)
+{
+  tid_t tid;
+  struct proc *np;
+
+  // Allocate thread process
+  if((np = allocproc()) == 0) {
+    	return -1;
+  }
+
+  np->pgdir = proc->pgdir;
+  np->sz = proc->sz;
+  np->parent = proc;
+
+  // init trap frame
+  memset(np->tf, 0, sizeof(*np->tf));
+  *np->tf = *proc->tf;
+
+  // init the stack
+  np->thread_stack_top = stack;
+  np->tf->esp = thread_stack_init(stack, arg);
+
+  // set the PC of the new thread process
+  np->tf->eip = (uint) tmain;
+
+  // Clear %eax so that thread_create returns 0 in the children
+  np->tf->eax = 0;
+
+  int i;
+  for(i = 0; i < NOFILE; i++)
+    	if(proc->ofile[i])
+      		np->ofile[i] = filedup(proc->ofile[i]);
+  		np->cwd = idup(proc->cwd);
+
+  tid = np->pid;
+  np->state = RUNNABLE;
+  safestrcpy(np->name, proc->name, sizeof(proc->name));
+  return tid;
+}
+
+int
+thread_join(void **stack)
+{
+  return -1;
 }
