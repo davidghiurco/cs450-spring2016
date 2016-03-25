@@ -28,7 +28,7 @@ OBJS = \
 	vectors.o\
 	vm.o\
 
-TOOLPREFIX = 
+TOOLPREFIX =
 
 # Try to infer the correct TOOLPREFIX if not set
 ifndef TOOLPREFIX
@@ -168,14 +168,16 @@ UPROGS=\
 	_zombie\
 	_bigtest\
 	_schedtest\
-	#_getcount\
+	_testmp2\
+	_testmp2_diffstck\
+	_test2\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
 
 -include *.d
 
-clean: 
+clean:
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym vectors.S bootblock entryother \
 	initcode initcode.out kernel xv6.img fs.img kernelmemfs mkfs \

@@ -21,7 +21,7 @@ struct {
 } ptable;
 
 struct thread_spin_lock thread_locks[MAX_NUM_LOCKS];
-int next_lock_idx = 1;
+int nextLockId = 1;
 
 static struct proc *initproc;
 
@@ -278,6 +278,41 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 
+void
+ scheduler(void)
+ {
+   struct proc *p;
+
+   for(;;){
+     // Enable interrupts on this processor.
+     sti();
+
+     // Loop over process table looking for process to run.
+     acquire(&ptable.lock);
+     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       if(p->state != RUNNABLE)
+         continue;
+
+       // Switch to chosen process.  It is the process's job
+       // to release ptable.lock and then reacquire it
+       // before jumping back to us.
+       proc = p;
+       switchuvm(p);
+       p->state = RUNNING;
+       swtch(&cpu->scheduler, proc->context);
+       switchkvm();
+
+       // Process is done running for now.
+       // It should have changed its p->state before coming back.
+       proc = 0;
+     }
+     release(&ptable.lock);
+
+   }
+ }
+
+
+/*  MP1 FOR CS450 SCHEDULER **********************
 // helper method for SJRF scheduler
 static int
 less_than_three_bursts(struct proc *p) {
@@ -337,9 +372,9 @@ scheduler(void)
               switchuvm(min_p);
               min_p->state = RUNNING;
               swtch(&cpu->scheduler, proc->context);
-              /*
-               switchkvm(); this should not be called in SJRF.
-              */
+
+              //switchkvm(); this should not be called in SJRF.
+
               proc = 0;
               min_p = 0;
             }
@@ -348,6 +383,8 @@ scheduler(void)
       release(&ptable.lock);
     }// end ;; 'for loop'
 } // end scheduler
+
+***************MP1 SCHEDULER FOR CS450*****************/
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state.
@@ -521,22 +558,49 @@ procdump(void)
 // Threading API for MP2 IIT CS 450 follows
 //****************************THREADING***************************
 
+// Copy len bytes from p to user address va in page table pgdir.
+// Most useful when pgdir is not the current page table.
+// uva2ka ensures this only works for PTE_U pages.
+/*
+int
+copyout(pde_t *pgdir, uint va, void *p, uint len)
+*/
+
 /*
   create the stack frame for the thread execution and return
   pointer to the top of the newly created stack
   MUST PASS IN SPACE ALLOCATED BY MALLOC as the "*stack" parameter
 */
 
-int
+
+static uint
 thread_stack_init(void *stack, void *args)
 {
-  return 2;
-}
+  // the stack will be represented by an array
+  // Stack has LIFO (Last In First Out) push-pop
+  //  (stack top)
+  //  --------
+  //  arg(int)
+  //  --------
+  //  0
+  //  --------
+  //  address of arg
+  //  --------
+  //  return PC
+  //  --------
+  //(stack bottom)
 
-/* Copy len bytes from p to user address va in page table pgdir.
-int
-copyout(pde_t *pgdir, uint va, void *p, uint len)
-*/
+  uint user_stack[3];
+  uint stack_p = (uint) stack;
+  stack_p = (stack_p - sizeof(int)) & ~3;
+  copyout(proc->pgdir, stack_p, args, sizeof(int));
+  user_stack[2] = 0;
+  user_stack[1] = stack_p;
+  user_stack[0] = 0xFFFFFFFF;
+  stack_p -= 3* sizeof(int);
+  copyout(proc->pgdir, stack_p, user_stack, 3*4);
+  return stack_p;
+}
 
 
 tid_t
@@ -558,11 +622,11 @@ thread_create(void (*tmain)(void *), void *stack, void *arg)
   memset(np->tf, 0, sizeof(*np->tf));
   *np->tf = *proc->tf;
 
-  // init the stack
+  // init the stack (esp = stack pointer)
   np->thread_stack_top = stack;
   np->tf->esp = thread_stack_init(stack, arg);
 
-  // set the PC of the new thread process
+  // set the PC of the new thread process  (eip = PC)
   np->tf->eip = (uint) tmain;
 
   // Clear %eax so that thread_create returns 0 in the children
@@ -580,8 +644,53 @@ thread_create(void (*tmain)(void *), void *stack, void *arg)
   return tid;
 }
 
-int
+
+tid_t
 thread_join(void **stack)
 {
-  return -1;
+  struct proc *p;
+  int havekids;
+  tid_t tid;
+
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for zombie children.
+    havekids = 0;
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if(p->parent != proc)
+      continue;
+    if (p->pgdir != proc->pgdir)
+      continue;
+    havekids = 1;
+    if(p->state == ZOMBIE) {
+      // Found one.
+      tid = p->pid;
+      kfree(p->kstack);
+      p->kstack = 0;
+      // freevm(p->pgdir);
+      p->state = UNUSED;
+      p->pid = 0;
+      p->parent = 0;
+      p->name[0] = 0;
+      p->killed = 0;
+      // clean up burst metadata
+      p->burst_idx = 0;
+      p->sburst = 0;
+      memset(p->burstarr, 0x0, MAX_NUM_BURSTS * sizeof(int));
+      // finished cleaning bursts
+      *stack = p->thread_stack_top;
+      release(&ptable.lock);
+      return tid;
+    }
+  }
+
+  // No point waiting if we don't have any children.
+    if(!havekids || proc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
 }
