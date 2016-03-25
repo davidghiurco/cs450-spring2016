@@ -168,9 +168,9 @@ UPROGS=\
 	_zombie\
 	_bigtest\
 	_schedtest\
-	_testmp2\
-	_testmp2_diffstck\
-	_test2\
+	_testmp2_shrd_stck\
+	_testmp2_sep_stck_glob\
+	_testmp2_PC\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
