@@ -5,7 +5,7 @@ from time import sleep
 
 #configurable variables
 STASH = 25
-BUCKET_SIZE = 6
+BUCKET_SIZE = 5
 NUM_FROLFERS = 5
 
 #Locking Structures
@@ -37,7 +37,7 @@ def frolfer(thread_id):
                 stashEmpty.release() # stash is empty. Signal cart
                 stashFull.acquire()  # block frolfer until cart is done
 
-            if STASH < BUCKET_SIZE: # if cart didn't bring enough discs
+            if STASH < BUCKET_SIZE: # if cart STILL didn't bring enough discs
                 stashLock.release()
                 continue # go back to top of while bucket == 0 loop
 
