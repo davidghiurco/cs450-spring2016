@@ -27,7 +27,7 @@ def frolfer(thread_id):
     global STASH, BUCKET_SIZE, NUM_FROLFERS
     global discs_on_field
     global rng
-    global stashLock, stashEmpty, stashFull
+    global stashLock, fieldLock, stashEmpty, stashFull
     bucket = 0
     while True:
         while bucket == 0:
@@ -35,7 +35,7 @@ def frolfer(thread_id):
             print ("Frolfer", thread_id, "calling for a bucket")
             if STASH < BUCKET_SIZE:
                 stashEmpty.release() # stash is empty. Signal cart
-                stashFull.acquire()  # block frolfer until cart is done
+                stashFull.acquire()  # wait for stash to be full
 
             if STASH < BUCKET_SIZE: # if cart STILL didn't bring enough discs
                 stashLock.release()
