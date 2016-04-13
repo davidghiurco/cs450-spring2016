@@ -54,7 +54,7 @@ def leader_thread(thread_id):
 # follower threads automatically block until leader signals them to release
 def release_follower():
     with followerLock:
-        follower = followers.popleft() # popLeft so that
+        follower = followers.popleft() # popLeft instead of normal pop to keep order
     follower.release()
 
 def l_enter_floor(thread_id, leader):

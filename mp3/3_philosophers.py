@@ -2,27 +2,32 @@ from threading import Thread, Semaphore, Lock
 import time, random
 from timeit import Timer
 from time import sleep
+from collections import deque
 
 
 #configurable variables
-NUM_PHILOSOPHERS = 15
-NUM_MEALS = 40
+NUM_PHILOSOPHERS = 5
+NUM_MEALS = 10
 
 #locking structures
 mutex = Lock()
 
 #other global vars
-footman = Semaphore(NUM_PHILOSOPHERS - 1)
 rng = random.Random()
 rng.seed(50)
 forks = []
 
-# possible philosopher states
-( THINKING, EATING ) = (0, 1)
+######Tanenbaum solution variables######
+(THINKING, HUNGRY, EATING) = (0, 1, 2)
+state = [THINKING] * NUM_PHILOSOPHERS
+phil = []
+eaters = deque()
+######Tanenbaum solution variables######
 
 def slow_down():
     sleep(rng.random())
 
+#########################Used for Footman, Left-handed##########################
 def left(i):
     return i
 
@@ -43,16 +48,50 @@ def get_forks_left(i):
     global forks
     forks[left(i)].acquire()
     forks[right(i)].acquire()
+#########################Used for Footman, Left-handed##########################
+
+###########################Used for Tanenbaum###################################
+def tleft(i):
+    return (i-1) % NUM_PHILOSOPHERS
+
+def tright(i):
+    return (i+1) % NUM_PHILOSOPHERS
+
+def tget_forks(i):
+    global state, phil
+    with mutex:
+        state[i] = HUNGRY
+        test(i)
+    phil[i].acquire()
+
+def tput_forks(i):
+    global state, phil
+    with mutex:
+        state[i] = THINKING
+        test(tright(i))
+        test(tleft(i))
+
+def test(i):
+    global state, phil
+    if state[i] == HUNGRY \
+        and state[tleft(i)] != EATING \
+        and state[tright(i)] != EATING:
+            state[i] = EATING
+            phil[i].release()
+###########################Used for Tanenbaum###################################
+
+
 
 
 
 ##################################FOOTMAN#######################################
+footman = Semaphore(NUM_PHILOSOPHERS - 1)
 def footman_solution(thread_id):
     global forks, NUM_PHILOSOPHERS, NUM_MEALS
-    for mealsEaten in range (0, NUM_MEALS):
-        slow_down()
+    for mealsEaten in range (NUM_MEALS):
         footman.acquire()
         get_forks(thread_id)
+        slow_down()
         put_forks(thread_id)
         footman.release()
 
@@ -72,13 +111,14 @@ def run_footman():
 ###############################LEFT-HANDED######################################
 def left_handed_solution(thread_id):
     global forks, NUM_PHILOSOPHERS, NUM_MEALS
-    for mealsEaten in range (0, NUM_MEALS):
-        slow_down()
+    for mealsEaten in range (NUM_MEALS):
+
         #the last philosopher is designated to be the leftie
         if thread_id == NUM_PHILOSOPHERS - 1:
             get_forks_left(thread_id)
-        else:
+        else: #everyone else is a rightie
             get_forks(thread_id)
+        slow_down()
         put_forks(thread_id)
 
 def run_left():
@@ -97,13 +137,18 @@ def run_left():
 
 ###############################TANENBAUM########################################
 def tanenbaum_solution(thread_id):
-    global forks, NUM_PHILOSOPHERS, NUM_MEALS
+    global phil, NUM_PHILOSOPHERS,  NUM_MEALS, eaters
+    for i in range(NUM_MEALS):
+        tget_forks(thread_id)
+        slow_down()
+        tput_forks(thread_id)
+
 
 def run_tanenbaum():
-    global forks, NUM_PHILOSOPHERS, NUM_MEALS
+    global phil, NUM_PHILOSOPHERS, NUM_MEALS
     rng.seed(50)
     threads = []
-    forks = [Lock() for eater in range(NUM_PHILOSOPHERS)]
+    phil = [Semaphore(0) for eater in range(NUM_PHILOSOPHERS)]
     for i in range (NUM_PHILOSOPHERS):
         tanenbaum_t = Thread(target = tanenbaum_solution, args = [i])
         threads.append(tanenbaum_t)
