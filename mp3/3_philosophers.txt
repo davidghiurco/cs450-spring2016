@@ -1,1 +1,22 @@
-// Writeup Problem 3
+# Writeup Problem 3 David Ghiurco
+
+For my tests (the currently submitted one, and also other philosopher/meal configurations),
+the tanenbaum solution was decisively the best (fastest) solution
+
+From my own personal understanding of the code for the solutions (which was taken from lecture slides)
+I think the reason tanenbaum performs so well is that it is more 'aware.'
+
+Both footman and the left-handed solution basically leave it up to mother nature to decide
+which philosophers will dine and in what order. Random sleep times plus random scheduling selections make the
+philosophers in the first 2 solutions essentially blind to what is going on around them
+(as far as what other philosophers are doing). The only things the first 2 solutions care about
+are available forks. When they find available forks, they may or may not dine, depending on which thread is scheduled.
+
+The tanenbaum solution (or at least my understanding of it), is more aware in the sense that
+it takes into account what other philosophers are doing. My implementation also implements some checkpoints
+to make sure that no particular philosopher is being starved due to random scheduling selection.
+
+The reason I think 'spatial awareness' is the important factor in the tanenbaum solution is that
+I think it leads to better resource utilization. If the guy to my left and to my right aren't eating,
+and I would like to eat, then heck... let's eat! This is not necessarily the case in the other 2 solutions,
+again, due to (I think) random scheduling selection of threads.

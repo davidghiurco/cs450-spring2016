@@ -1,4 +1,4 @@
-from threading import Thread, Semaphore, Lock
+from threading import Thread, Semaphore, Lock, Barrier
 import time, random
 from timeit import Timer
 from time import sleep
@@ -7,10 +7,11 @@ from collections import deque
 
 #configurable variables
 NUM_PHILOSOPHERS = 5
-NUM_MEALS = 10
+NUM_MEALS = 20
 
 #locking structures
 mutex = Lock()
+eatenEnough = Barrier(NUM_PHILOSOPHERS)
 
 #other global vars
 rng = random.Random()
@@ -20,8 +21,14 @@ forks = []
 ######Tanenbaum solution variables######
 (THINKING, HUNGRY, EATING) = (0, 1, 2)
 state = [THINKING] * NUM_PHILOSOPHERS
+#tracks the meals eaten by each index
+mealsEaten = [0] * NUM_PHILOSOPHERS
+# to address starvation,
+# each philosopher can eat at most 'rendezvousPoint' meals before it has
+# to wait for everyone else to eat that many meals,
+# after which everyone continues to finish all their next 'burst' of meals
+rendezvousPoint = -1
 phil = []
-eaters = deque()
 ######Tanenbaum solution variables######
 
 def slow_down():
@@ -68,6 +75,7 @@ def tput_forks(i):
     global state, phil
     with mutex:
         state[i] = THINKING
+        mealsEaten[i] += 1
         test(tright(i))
         test(tleft(i))
 
@@ -88,7 +96,7 @@ def test(i):
 footman = Semaphore(NUM_PHILOSOPHERS - 1)
 def footman_solution(thread_id):
     global forks, NUM_PHILOSOPHERS, NUM_MEALS
-    for mealsEaten in range (NUM_MEALS):
+    for i in range (NUM_MEALS):
         footman.acquire()
         get_forks(thread_id)
         slow_down()
@@ -111,7 +119,7 @@ def run_footman():
 ###############################LEFT-HANDED######################################
 def left_handed_solution(thread_id):
     global forks, NUM_PHILOSOPHERS, NUM_MEALS
-    for mealsEaten in range (NUM_MEALS):
+    for i in range (NUM_MEALS):
 
         #the last philosopher is designated to be the leftie
         if thread_id == NUM_PHILOSOPHERS - 1:
@@ -136,19 +144,37 @@ def run_left():
 
 
 ###############################TANENBAUM########################################
+def resetMeals(thread_id):
+    with mutex:
+        mealsEaten[thread_id] = 0
+
 def tanenbaum_solution(thread_id):
-    global phil, NUM_PHILOSOPHERS,  NUM_MEALS, eaters
+    global mealsEaten, phil, NUM_PHILOSOPHERS,  NUM_MEALS
     for i in range(NUM_MEALS):
+        mutex.acquire()
+        if mealsEaten[thread_id] == rendezvousPoint:
+            mutex.release()
+            eatenEnough.wait()
+            resetMeals(thread_id)
+        else:
+            mutex.release()
+
         tget_forks(thread_id)
         slow_down()
         tput_forks(thread_id)
 
 
+
 def run_tanenbaum():
-    global phil, NUM_PHILOSOPHERS, NUM_MEALS
+    global phil, NUM_PHILOSOPHERS, NUM_MEALS, rendezvousPoint
     rng.seed(50)
     threads = []
     phil = [Semaphore(0) for eater in range(NUM_PHILOSOPHERS)]
+    # rendezvousPoint should scale with NUM_MEALS & NUM_PHILOSOPHERS
+    if (NUM_MEALS >= NUM_PHILOSOPHERS):
+        rendezvousPoint = int(NUM_MEALS / NUM_PHILOSOPHERS)
+    else:
+        rendezvousPoint = int(NUM_PHILOSOPHERS / NUM_MEALS)
     for i in range (NUM_PHILOSOPHERS):
         tanenbaum_t = Thread(target = tanenbaum_solution, args = [i])
         threads.append(tanenbaum_t)
@@ -159,6 +185,14 @@ def run_tanenbaum():
 
 def main():
     global NUM_PHILOSOPHERS, NUM_MEALS
+    '''
+    With current setup, this is the output I get on my machine:
+    > Time Footman Solution: 45.160s
+    > Time Left-Handed Solution: 48.516s
+    > Time Tanenbaum Solution: 28.289s
+    '''
+    print ("Number of philosophers:", NUM_PHILOSOPHERS)
+    print ("Number of meals each:", NUM_MEALS)
 
     timer1 = Timer(run_footman)
     print ("Time Footman Solution: {:0.3f}s".format(timer1.timeit(1)/1))
