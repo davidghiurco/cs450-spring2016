@@ -21,7 +21,8 @@ struct inode {
   short minor;
   short nlink;
   uint size;
-  uint addrs[NDIRECT+1];
+  // number of data block addresses
+  uint addrs[NDIRECT + NUM_INDIRECT + NUM_DOUBLE_INDIRECT];
 };
 #define I_BUSY 0x1
 #define I_VALID 0x2

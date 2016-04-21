@@ -5,7 +5,7 @@
 //   + Directories: inode with special contents (list of other inodes!)
 //   + Names: paths like /usr/rtm/xv6/fs.c for convenient naming.
 //
-// This file contains the low-level file system manipulation 
+// This file contains the low-level file system manipulation
 // routines.  The (higher-level) system call implementations
 // are in sysfile.c.
 
@@ -28,7 +28,7 @@ void
 readsb(int dev, struct superblock *sb)
 {
   struct buf *bp;
-  
+
   bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
@@ -39,14 +39,14 @@ static void
 bzero(int dev, int bno)
 {
   struct buf *bp;
-  
+
   bp = bread(dev, bno);
   memset(bp->data, 0, BSIZE);
   log_write(bp);
   brelse(bp);
 }
 
-// Blocks. 
+// Blocks.
 
 // Allocate a zeroed disk block.
 static uint
@@ -348,38 +348,85 @@ iunlockput(struct inode *ip)
 //
 // The content (data) associated with each inode is stored
 // in blocks on the disk. The first NDIRECT block numbers
-// are listed in ip->addrs[].  The next NINDIRECT blocks are 
+// are listed in ip->addrs[].  The next NINDIRECT blocks are
 // listed in block ip->addrs[NDIRECT].
+// The next NDOUBLE blocks are listed in ip->addrs[NDOUBLE]
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
+
+
 static uint
 bmap(struct inode *ip, uint bn)
 {
   uint addr, *a;
   struct buf *bp;
 
-  if(bn < NDIRECT){
+//############################# DIRECT BLOCKS #################################
+  /*
+    Blocks 0-9 map inside the 10 direct pointers in the inode
+  */
+  if(bn < NDIRECT) {
     if((addr = ip->addrs[bn]) == 0)
       ip->addrs[bn] = addr = balloc(ip->dev);
     return addr;
   }
   bn -= NDIRECT;
+//############################# DIRECT BLOCKS #################################
 
-  if(bn < NINDIRECT){
-    // Load indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT]) == 0)
-      ip->addrs[NDIRECT] = addr = balloc(ip->dev);
+//######################### SINGLY-INDIRECT BLOCKS ############################
+  if(bn < NINDIRECT) {
+    /*
+      To calculate the offset into the singly-indirect pointers:
+        divide the block number by the number of pointers a block can store,
+        PTRS_PER_BLOCK (512 / 4 = 128 pointers) and cast the result to an int.
+        e.g. s_offset = (uint) bn / PTRS_PER_BLOCK;
+
+      The first singly-indirect pointer can "hold" 128 blocks, as can the second.
+      Using this offset setup, logical block numbers 10-137 will map inside the
+      first indirect pointer, and logical block numbers 138-265 will map
+      inside the second indirect pointer.
+
+      So realistically speaking, using the current inode structure setup,
+      s_offset will really only have a value of 0 or 1 in this if block.
+    */
+    uint s_offset = (uint) bn / PTRS_PER_BLOCK
+    // Load singly-indirect block, allocating if necessary.
+    if((addr = ip->addrs[NDIRECT + s_offset]) == 0)
+      ip->addrs[NDIRECT + s_offset] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
-    a = (uint*)bp->data;
-    if((addr = a[bn]) == 0){
-      a[bn] = addr = balloc(ip->dev);
+    a = (uint *) bp->data;
+    if((addr = a[bn % PTRS_PER_BLOCK]) == 0) {
+      a[bn % PTRS_PER_BLOCK] = addr = balloc(ip->dev);
       log_write(bp);
     }
     brelse(bp);
     return addr;
   }
+  bn -= NINDIRECT
+//######################### SINGLY-INDIRECT BLOCKS ############################
 
+//######################### DOUBLY-INDIRECT BLOCKS ############################
+  if (bn < NDOUBLE) {
+    /*
+      To calculate the offset into the doubly-indirect pointer(s):
+        divide the block number by the number of pointers a "block of blocks"
+        can store, (PTRS_PER_BLOCK)^2 (128 * 128 = 16384 pointers)
+        e.g. d_offset = (uint) bn / (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+
+      Since there is only 1 doubly-indirect pointer per inode with the current
+      inode setup, this offset will always be zero in this if block.
+    */
+    uint d_offset = (uint) bn / (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+    // Load doubly-indirect block, allocating if necessary
+    if ((addr = ip->addrs[NDIRECT + NUM_INDIRECT + d_offset]) == 0)
+      ip->addrs[NDIRECT + NUM_INDIRECT + d_offset] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);
+    a = (uint *) bp->data;
+
+  }
+
+//######################### DOUBLY-INDIRECT BLOCKS ############################
   panic("bmap: out of range");
 }
 
@@ -401,7 +448,7 @@ itrunc(struct inode *ip)
       ip->addrs[i] = 0;
     }
   }
-  
+
   if(ip->addrs[NDIRECT]){
     bp = bread(ip->dev, ip->addrs[NDIRECT]);
     a = (uint*)bp->data;
@@ -554,7 +601,7 @@ dirlink(struct inode *dp, char *name, uint inum)
   de.inum = inum;
   if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
     panic("dirlink");
-  
+
   return 0;
 }
 
