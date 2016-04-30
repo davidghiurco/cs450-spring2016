@@ -360,8 +360,7 @@ static uint
 bmap(struct inode *ip, uint bn)
 {
   uint addr, *a, *sindirect_a;
-  struct buf *bp;
-  struct buf *sindirect_bp;
+  struct buf *bp, *sindirect_bp;
 
 //############################# DIRECT BLOCKS #################################
   /*
@@ -393,10 +392,12 @@ bmap(struct inode *ip, uint bn)
     */
     uint s_offset = (uint) bn / PTRS_PER_BLOCK;
     // Load singly-indirect block, allocating if necessary.
-    if((addr = ip->addrs[NDIRECT + s_offset]) == 0)
+    if((addr = ip->addrs[NDIRECT + s_offset]) == 0) {
       ip->addrs[NDIRECT + s_offset] = addr = balloc(ip->dev);
+    }
     bp = bread(ip->dev, addr);
     a = (uint *) bp->data;
+
     if((addr = a[bn % PTRS_PER_BLOCK]) == 0) {
       a[bn % PTRS_PER_BLOCK] = addr = balloc(ip->dev);
       log_write(bp);
@@ -417,8 +418,7 @@ bmap(struct inode *ip, uint bn)
 
       Since there is only 1 doubly-indirect pointer per inode with the current
       inode setup, this offset will always be zero in this if block.
-    */
-    /*
+
     this section only needed if more than one doubly-indirect pointer exists
 
     uint d_offset;
@@ -431,12 +431,14 @@ bmap(struct inode *ip, uint bn)
 
     // Load doubly-indirect block, allocating if necessary
     if ((addr = ip->addrs[NDIRECT + NUM_INDIRECT]) == 0)
-      ip->addrs[NDIRECT + NUM_INDIRECT + d_offset] = addr = balloc(ip->dev);
+      ip->addrs[NDIRECT + NUM_INDIRECT] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint *) bp->data;
 
     uint sindirect_bn = bn % (PTRS_PER_BLOCK * PTRS_PER_BLOCK); // block number in single indirect ptrs
-    uint i_offset = (uint) sindirect_bn / PTRS_PER_BLOCK; // index in said block
+
+    // from here, the problem is the same as in the indirect block case
+    uint i_offset = (uint) sindirect_bn / PTRS_PER_BLOCK;
 
     if ((addr = a[i_offset]) == 0) {
       a[i_offset] = addr = balloc(ip->dev);
