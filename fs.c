@@ -359,8 +359,9 @@ iunlockput(struct inode *ip)
 static uint
 bmap(struct inode *ip, uint bn)
 {
-  uint addr, *a;
+  uint addr, *a, *sindirect_a;
   struct buf *bp;
+  struct buf *sindirect_bp;
 
 //############################# DIRECT BLOCKS #################################
   /*
@@ -390,7 +391,7 @@ bmap(struct inode *ip, uint bn)
       So realistically speaking, using the current inode structure setup,
       s_offset will really only have a value of 0 or 1 in this if block.
     */
-    uint s_offset = (uint) bn / PTRS_PER_BLOCK
+    uint s_offset = (uint) bn / PTRS_PER_BLOCK;
     // Load singly-indirect block, allocating if necessary.
     if((addr = ip->addrs[NDIRECT + s_offset]) == 0)
       ip->addrs[NDIRECT + s_offset] = addr = balloc(ip->dev);
@@ -403,7 +404,7 @@ bmap(struct inode *ip, uint bn)
     brelse(bp);
     return addr;
   }
-  bn -= NINDIRECT
+  bn -= NINDIRECT;
 //######################### SINGLY-INDIRECT BLOCKS ############################
 
 //######################### DOUBLY-INDIRECT BLOCKS ############################
@@ -417,13 +418,41 @@ bmap(struct inode *ip, uint bn)
       Since there is only 1 doubly-indirect pointer per inode with the current
       inode setup, this offset will always be zero in this if block.
     */
-    uint d_offset = (uint) bn / (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+    /*
+    this section only needed if more than one doubly-indirect pointer exists
+
+    uint d_offset;
+    if (NUM_DOUBLE_INDIRECT == 1)
+      d_offset = 0;
+    else
+      d_offset = (uint) bn / (PTRS_PER_BLOCK * PTRS_PER_BLOCK);
+    */
+
+
     // Load doubly-indirect block, allocating if necessary
-    if ((addr = ip->addrs[NDIRECT + NUM_INDIRECT + d_offset]) == 0)
+    if ((addr = ip->addrs[NDIRECT + NUM_INDIRECT]) == 0)
       ip->addrs[NDIRECT + NUM_INDIRECT + d_offset] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
     a = (uint *) bp->data;
 
+    uint sindirect_bn = bn % (PTRS_PER_BLOCK * PTRS_PER_BLOCK); // block number in single indirect ptrs
+    uint i_offset = (uint) sindirect_bn / PTRS_PER_BLOCK; // index in said block
+
+    if ((addr = a[i_offset]) == 0) {
+      a[i_offset] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    sindirect_bp = bread(ip->dev, addr);
+    sindirect_a = (uint *) sindirect_bp->data;
+
+    if ((addr = sindirect_a[sindirect_bn % PTRS_PER_BLOCK]) == 0) {
+      sindirect_a[sindirect_bn % PTRS_PER_BLOCK] = addr = balloc(ip->dev);
+      log_write(sindirect_bp);
+      }
+
+    brelse(bp);
+    brelse(sindirect_bp);
+    return addr;
   }
 
 //######################### DOUBLY-INDIRECT BLOCKS ############################

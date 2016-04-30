@@ -24,7 +24,7 @@ struct superblock {
 //  2 singly-indirect block pointers
 //  1 doubly-indirect block pointer
 
-#define NUM_DIRECT 10
+#define NDIRECT 10
 #define NUM_INDIRECT 2
 #define NUM_DOUBLE_INDIRECT 1
 
@@ -35,7 +35,7 @@ struct superblock {
 // num of blocks address by doubly-indirect pointers
 #define NDOUBLE (NUM_DOUBLE_INDIRECT * PTRS_PER_BLOCK * PTRS_PER_BLOCK)
 // maximum number of blocks a file can be
-#define MAXFILE (NUM_DIRECT + NINDIRECT + NDOUBLE)
+#define MAXFILE (NDIRECT + NINDIRECT + NDOUBLE)
 
 // On-disk inode structure
 struct dinode {
@@ -45,7 +45,7 @@ struct dinode {
   short nlink;          // Number of links to inode in file system
   uint size;            // Size of file (bytes)
   // number of data block addresses
-  uint addrs[NUM_DIRECT + NUM_INDIRECT + NUM_DOUBLE_INDIRECT];
+  uint addrs[NDIRECT + NUM_INDIRECT + NUM_DOUBLE_INDIRECT];
 };
 
 // Inodes per block.
